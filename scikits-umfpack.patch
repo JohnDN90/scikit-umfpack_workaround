@@ -1,0 +1,288 @@
+diff -ruN ./scikit-umfpack3/pyproject.toml ./scikit-umfpack/pyproject.toml
+--- ./scikit-umfpack3/pyproject.toml	2025-02-27 11:18:39
++++ ./scikit-umfpack/pyproject.toml	2025-02-27 11:20:33
+@@ -2,7 +2,8 @@
+ build-backend = 'mesonpy'
+ requires = [
+     'meson-python',
+-    'numpy<2.0.0',
++    'numpy',
++    'swig'
+ ]
+ 
+ [project]
+@@ -15,7 +16,7 @@
+ ]
+ requires-python = ">=3.9"
+ dependencies = [
+-    "numpy<2.0.0",
++    "numpy",
+     "scipy",
+ ]
+ readme = "README.rst"
+diff -ruN ./scikit-umfpack3/scikits/umfpack/umfpack.i ./scikit-umfpack/scikits/umfpack/umfpack.i
+--- ./scikit-umfpack3/scikits/umfpack/umfpack.i	2025-02-27 11:18:39
++++ ./scikit-umfpack/scikits/umfpack/umfpack.i	2025-02-27 11:24:19
+@@ -19,25 +19,28 @@
+ 
+ #include <umfpack.h>
+ 
+-%{
+-#ifndef SuiteSparse_long
+-    #define SuiteSparse_long UF_long
+-#endif
+-%}
++typedef int64_t UF_long;
+ 
+-typedef int64_t SuiteSparse_long;
+-typedef SuiteSparse_long UF_long;
+-
+-/* Convert from Python --> C */
+-%typemap(in) SuiteSparse_long {
+-  $1 = (SuiteSparse_long)PyInt_AsLong($input);
++/* Convert 32-bit integer from Python --> C */
++%typemap(in) int32_t {
++  $1 = (int32_t)PyLong_AsLong($input);
+ }
+ 
+ /* Convert from C --> Python */
+-%typemap(out) SuiteSparse_long {
+-  $result = PyInt_FromLong((int)$1);
++%typemap(out) int32_t {
++  $result = PyLong_FromLong($1);
+ }
+ 
++/* Convert 64-bit integer from Python --> C */
++%typemap(in) int64_t {
++  $1 = (int64_t)PyLong_AsLongLong($input);
++}
++
++/* Convert 64-bit integer from C --> Python */
++%typemap(out) int64_t {
++  $result = PyLong_FromLongLong($1);
++}
++
+ %init %{
+     import_array();
+ %}
+@@ -171,24 +174,18 @@
+   $result = helper_appendToTuple( $result, obj ); \
+ };
+ 
+-ARRAY_IN( int, const int, INT )
+-%apply const int *array {
+-    const int Ap [ ],
+-    const int Ai [ ]
++ARRAY_IN( int32_t, const int32_t, INT32 )
++%apply const int32_t *array {
++    const int32_t Ap [ ],
++    const int32_t Ai [ ]
+ };
+ 
+-ARRAY_IN( long, const long, LONG )
+-%apply const long *array {
+-    const long Ap [ ],
+-    const long Ai [ ]
++ARRAY_IN( int64_t, const int64_t, INT64 )
++%apply const int64_t *array {
++    const int64_t Ap [ ],
++    const int64_t Ai [ ]
+ };
+ 
+-ARRAY_IN( SuiteSparse_long, const SuiteSparse_long, INT64 )
+-%apply const SuiteSparse_long *array {
+-    const SuiteSparse_long Ap [ ],
+-    const SuiteSparse_long Ai [ ]
+-};
+-
+ ARRAY_IN( double, const double, DOUBLE )
+ %apply const double *array {
+     const double Ax [ ],
+@@ -217,19 +214,17 @@
+ 
+ %include <umfpack.h>
+ 
+-#if UMFPACK_MAIN_VERSION < 6
+-  %include <umfpack_solve.h>
+-  %include <umfpack_defaults.h>
+-  %include <umfpack_triplet_to_col.h>
+-  %include <umfpack_col_to_triplet.h>
+-  %include <umfpack_transpose.h>
+-  %include <umfpack_scale.h>
++%include <umfpack_solve.h>
++%include <umfpack_defaults.h>
++%include <umfpack_triplet_to_col.h>
++%include <umfpack_col_to_triplet.h>
++%include <umfpack_transpose.h>
++%include <umfpack_scale.h>
+ 
+-  %include <umfpack_report_symbolic.h>
+-  %include <umfpack_report_numeric.h>
+-  %include <umfpack_report_info.h>
+-  %include <umfpack_report_control.h>
+-#endif
++%include <umfpack_report_symbolic.h>
++%include <umfpack_report_numeric.h>
++%include <umfpack_report_info.h>
++%include <umfpack_report_control.h>
+ 
+ /*
+   The order is important below!
+@@ -241,10 +236,8 @@
+     void **Numeric
+ }
+ 
+-#if UMFPACK_MAIN_VERSION < 6
+-  %include <umfpack_symbolic.h>
+-  %include <umfpack_numeric.h>
+-#endif
++%include <umfpack_symbolic.h>
++%include <umfpack_numeric.h>
+ 
+ OPAQUE_ARGINOUT( void * )
+ %apply  void ** opaque_arginout {
+@@ -252,40 +245,29 @@
+     void **Numeric
+ }
+ 
+-#if UMFPACK_MAIN_VERSION < 6
+-  %include <umfpack_free_symbolic.h>
+-  %include <umfpack_free_numeric.h>
+-#endif
++%include <umfpack_free_symbolic.h>
++%include <umfpack_free_numeric.h>
+ 
+ /*
+  * wnbell - attempt to get L,U,P,Q out
+  */
+ %include "typemaps.i"
+-%apply int  *OUTPUT {
+-    int *lnz,
+-    int *unz,
+-    int *n_row,
+-    int *n_col,
+-    int *nz_udiag
++%apply int *OUTPUT {
++    int32_t *lnz,
++    int32_t *unz,
++    int32_t *n_row,
++    int32_t *n_col,
++    int32_t *nz_udiag
+ };
+-%apply long *OUTPUT {
+-    long *lnz,
+-    long *unz,
+-    long *n_row,
+-    long *n_col,
+-    long *nz_udiag
++%apply int *OUTPUT {
++    int64_t *lnz,
++    int64_t *unz,
++    int64_t *n_row,
++    int64_t *n_col,
++    int64_t *nz_udiag
+ };
+-%apply long *OUTPUT {
+-    SuiteSparse_long *lnz,
+-    SuiteSparse_long *unz,
+-    SuiteSparse_long *n_row,
+-    SuiteSparse_long *n_col,
+-    SuiteSparse_long *nz_udiag
+-};
+ 
+-#if UMFPACK_MAIN_VERSION < 6
+-  %include <umfpack_get_lunz.h>
+-#endif
++%include <umfpack_get_lunz.h>
+ 
+ ARRAY_IN( double, double, DOUBLE )
+ %apply double *array {
+@@ -298,41 +280,28 @@
+     double Rs [ ]
+ };
+ 
+-ARRAY_IN( int, int, INT )
+-%apply int *array {
+-    int Lp [ ],
+-    int Lj [ ],
+-    int Up [ ],
+-    int Ui [ ],
+-    int P [ ],
+-    int Q [ ]
++ARRAY_IN( int32_t, int32_t, INT32 )
++%apply int32_t *array {
++    int32_t Lp [ ],
++    int32_t Lj [ ],
++    int32_t Up [ ],
++    int32_t Ui [ ],
++    int32_t P [ ],
++    int32_t Q [ ]
+ };
+-%apply int  *OUTPUT { int *do_recip};
++%apply int *OUTPUT { int32_t *do_recip};
+ 
+-ARRAY_IN( long, long, LONG )
+-%apply long *array {
+-    long Lp [ ],
+-    long Lj [ ],
+-    long Up [ ],
+-    long Ui [ ],
+-    long P [ ],
+-    long Q [ ]
++ARRAY_IN( int64_t, int64_t, INT64 )
++%apply int64_t *array {
++    int64_t Lp [ ],
++    int64_t Lj [ ],
++    int64_t Up [ ],
++    int64_t Ui [ ],
++    int64_t P [ ],
++    int64_t Q [ ]
+ };
+-%apply long *OUTPUT { long *do_recip};
++%apply int *OUTPUT { int64_t *do_recip};
+ 
+-ARRAY_IN( SuiteSparse_long, SuiteSparse_long, INT64 )
+-%apply SuiteSparse_long *array {
+-    SuiteSparse_long Lp [ ],
+-    SuiteSparse_long Lj [ ],
+-    SuiteSparse_long Up [ ],
+-    SuiteSparse_long Ui [ ],
+-    SuiteSparse_long P [ ],
+-    SuiteSparse_long Q [ ]
+-};
+-%apply long *OUTPUT { SuiteSparse_long *do_recip};
+-
+-#if UMFPACK_MAIN_VERSION < 6
+-  %include <umfpack_get_numeric.h>
+-#endif
++%include <umfpack_get_numeric.h>
+ 
+ #endif // SWIGPYTHON
+diff -ruN ./scikit-umfpack3/scikits/umfpack/umfpack.py ./scikit-umfpack/scikits/umfpack/umfpack.py
+--- ./scikit-umfpack3/scikits/umfpack/umfpack.py 2025-02-27 11:18:39
++++ ./scikit-umfpack/scikits/umfpack/umfpack.py  2025-02-27 11:24:19
+@@ -845,8 +845,24 @@
+ 
+         """
+ 
++        if isinstance(mtx, sp.coo_matrix):
++            if (mtx.row.dtype == np.int64) or (mtx.indptr.dtype == np.int64):
++                ind64 = True
++            else:
++                ind64 = False
++        else:
++            if (mtx.indices.dtype == np.int64) or (mtx.indptr.dtype == np.int64):
++                ind64 = True
++            else:
++                ind64 = False
++        
+         # this should probably be changed
+         mtx = mtx.tocsc()
++
++        if ind64:
++            mtx.indices = mtx.indices.astype(np.int64)
++            mtx.indptr = mtx.indptr.astype(np.int64)
++
+         self.numeric(mtx)
+ 
+         # first find out how much space to reserve

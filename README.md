@@ -3,9 +3,9 @@ Developed by JohnDN90 (February 27, 2025)
 This script modifies [scikit-umfpack](https://github.com/scikit-umfpack/scikit-umfpack) to be
 compatible with newer versions of SuiteSparse.
 
-This should be considered a messy workaround rather
-than an actual fix. It should hopefully at least give hints to the modifications that need to be
-made in scikit-umfpack itself for a permanent fix.
+This should be considered a messy workaround for the issues discussed in issue [#98](https://github.com/scikit-umfpack/scikit-umfpack/issues/98)
+of scikit-umfpack/scikit-umfpack rather than an actual fix. It should hopefully at least give hints
+to the modifications that need to be made in scikit-umfpack itself for a permanent fix.
 
 Configuration used in development and testing:
 - OS:               macOS 14.7.4
